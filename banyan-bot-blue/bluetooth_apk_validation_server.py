@@ -1,7 +1,7 @@
 """
 #!/usr/bin/env python3
 
- Copyright (c) 2017-2019 Alan Yorinks All right reserved.
+ Copyright (C) 2019 Alan Yorinks All right reserved.
 
  Python Banyan is free software; you can redistribute it and/or
  modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
