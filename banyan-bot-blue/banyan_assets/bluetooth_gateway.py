@@ -148,7 +148,7 @@ class BlueToothGateway(BanyanBase, threading.Thread):
                                            address=self.server_bt_address)
 
             if len(service_matches) == 0:
-                print("couldn't find the SampleServer service =(")
+                print("Could not find the remote Bluetooth server - exiting")
                 sys.exit(0)
 
             first_match = service_matches[0]
