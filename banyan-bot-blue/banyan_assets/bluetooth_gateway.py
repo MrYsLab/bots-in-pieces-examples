@@ -21,6 +21,8 @@ blue_tooth_gateway.py
 """
 import argparse
 import json
+import subprocess
+import signal
 import sys
 import subprocess
 import threading
@@ -253,7 +255,7 @@ def bluetooth_gateway():
     parser.add_argument("-g", dest="gateway_type", default="server",
                         help="Type of Gateway : server or client"),
     parser.add_argument("-j", dest="json_data", default="False",
-                        help="Bluetooth packets json encoded True or False"),
+                        help="Bluetooth packets json encoded true or false"),
     parser.add_argument("-l", dest="publish_topic", default="from_bt_gateway",
                         help="Banyan publisher topic"),
     parser.add_argument("-m", dest="subscriber_list",
@@ -288,7 +290,7 @@ def bluetooth_gateway():
         args.process_name = None
     if args.subscriber_list == ['None']:
         args.subscriber_list = ['to_bt_gateway']
-    if args.json_data == 'False':
+    if args.json_data == 'False' or args.json_data == 'false':
         args.json_data = False
     else:
         args.json_data = True
@@ -310,8 +312,17 @@ def bluetooth_gateway():
     try:
         app = BlueToothGateway(**kw_options)
     except KeyboardInterrupt:
-        app.cleanup()
+        sys.exit()
+
+    # noinspection PyUnusedLocal
+    def signal_handler(sig, frame):
+        print("Control-C detected. See you soon.")
+        app.clean_up()
         sys.exit(0)
+
+    # listen for SIGINT
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
 
 if __name__ == '__main__':
