@@ -1,0 +1,4 @@
+command_string,spawn,topic,append_bp_address,auto_restart,wait
+monitor,yes,local,no,no,0
+"sudo coverage run --branch  --append --omit=/usr/lib*,/usr/local* ../../banyan_assets/bluetooth_gateway.py",yes,local,no,no,5
+python3 ../../test_fixtures/message_injector.py,yes,local,no,no,0
