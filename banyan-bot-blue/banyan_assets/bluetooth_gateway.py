@@ -34,7 +34,7 @@ from boltons.socketutils import BufferedSocket
 from python_banyan.banyan_base import BanyanBase
 
 
-# noinspection PyMethodMayBeStatic
+# noinspection PyMethodMayBeStatic,PyBroadException
 class BlueToothGateway(BanyanBase, threading.Thread):
     """
     This class implements Bluetooth an RFCOMM server or client,
@@ -139,8 +139,11 @@ class BlueToothGateway(BanyanBase, threading.Thread):
                               )
 
             print("Waiting for connection on RFCOMM channel %d" % port)
-
-            self.client_sock, self.client_info = self.server_sock.accept()
+            try:
+                self.client_sock, self.client_info = self.server_sock.accept()
+            except KeyboardInterrupt:
+                self.clean_up()
+                sys.exit(0)
 
             print("Accepted connection from ", self.client_info)
         else:
@@ -149,6 +152,7 @@ class BlueToothGateway(BanyanBase, threading.Thread):
 
             if len(service_matches) == 0:
                 print("Could not find the remote Bluetooth server - exiting")
+                self.clean_up()
                 sys.exit(0)
 
             first_match = service_matches[0]
@@ -173,7 +177,11 @@ class BlueToothGateway(BanyanBase, threading.Thread):
         self.start()
 
         # this will keep the program running forever
-        self.receive_loop()
+        try:
+            self.receive_loop()
+        except KeyboardInterrupt:
+            self.clean_up()
+            sys.exit(0)
 
     def incoming_message_processing(self, topic, payload):
         """
@@ -231,6 +239,9 @@ class BlueToothGateway(BanyanBase, threading.Thread):
                     data = self.bsock.recv_until(b'}',
                                                  timeout=0,
                                                  with_delimiter=True)
+                except KeyboardInterrupt:
+                    self.clean_up()
+                    sys.exit(0)
                 except Exception as e:
                     continue
 
@@ -241,7 +252,11 @@ class BlueToothGateway(BanyanBase, threading.Thread):
 
             # data is not json encoded
             else:
-                data = (self.client_sock.recv(1)).decode()
+                try:
+                    data = (self.client_sock.recv(1)).decode()
+                except KeyboardInterrupt:
+                    self.clean_up()
+                    sys.exit(0)
                 payload = {'command': data}
                 self.publish_payload(payload, self.publish_topic)
 
@@ -309,20 +324,19 @@ def bluetooth_gateway():
         'subscriber_list': args.subscriber_list
     }
 
-    try:
-        app = BlueToothGateway(**kw_options)
-    except KeyboardInterrupt:
-        sys.exit()
+    BlueToothGateway(**kw_options)
 
-    # noinspection PyUnusedLocal
-    def signal_handler(sig, frame):
-        print("Control-C detected. See you soon.")
-        app.clean_up()
-        sys.exit(0)
 
-    # listen for SIGINT
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+# signal handler function called when Control-C occurs
+# noinspection PyShadowingNames,PyUnusedLocal,PyUnusedLocal
+def signal_handler(sig, frame):
+    print('Exiting Through Signal Handler')
+    raise KeyboardInterrupt
+
+
+# listen for SIGINT
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 
 if __name__ == '__main__':

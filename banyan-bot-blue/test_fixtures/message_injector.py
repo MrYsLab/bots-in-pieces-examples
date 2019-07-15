@@ -229,17 +229,19 @@ def message_injector():
                   'msg_type': args.msg_type,
                   'message_frequency': args.message_frequency}
 
-    app = MessageInjector(**kw_options)
+    MessageInjector(**kw_options)
 
-    # signal handler function called when Control-C occurs
-    def signal_handler(sig, frame):
-        print("Control-C detected. See you soon.")
-        app.clean_up()
-        sys.exit(0)
 
-    # listen for SIGINT
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+# signal handler function called when Control-C occurs
+# noinspection PyShadowingNames,PyUnusedLocal,PyUnusedLocal
+def signal_handler(sig, frame):
+    print('Exiting Through Signal Handler')
+    raise KeyboardInterrupt
+
+
+# listen for SIGINT
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 
 if __name__ == '__main__':
