@@ -1,0 +1,4 @@
+command_string,spawn,topic,append_bp_address,auto_restart,wait
+monitor,yes,local,no,no,0
+python3 ../../test_fixtures/crickit_gui.py
+"coverage run --branch  --append --omit=/usr/lib*,/usr/local* ../../banyan_assets/crickit_gateway.py",yes,local,no,no,0
