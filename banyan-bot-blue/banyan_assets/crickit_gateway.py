@@ -30,7 +30,7 @@ from adafruit_motor import stepper
 from python_banyan.gateway_base import GatewayBase
 
 
-# noinspection PyMethodMayBeStatic,PyMethodMayBeStatic,SpellCheckingInspection
+# noinspection PyMethodMayBeStatic,PyMethodMayBeStatic,SpellCheckingInspection,DuplicatedCode
 class CrickitGateway(GatewayBase, threading.Thread):
     """
     A OneGPIO type gateway for the Adafruit Crickit Hat for the Raspberry Pi
@@ -88,9 +88,15 @@ class CrickitGateway(GatewayBase, threading.Thread):
             board_type=kwargs['board_type']
         )
 
-        # get a seesaw object
+        # get the report topic passed in
+        self.report_topic = kwargs['report_topic']
+
+        # get a seesaw object - this is a low level adafruit thingy
         self.ss = crickit.seesaw
 
+        # We need a seperate thread to poll the inputs
+        # Adafruit does not provide for callbacks.
+        # No callbacks is a mistake IMHO!
         threading.Thread.__init__(self)
         self.daemon = True
 
@@ -323,9 +329,9 @@ class CrickitGateway(GatewayBase, threading.Thread):
         This method control both drive and motor port steppers
 
         Typical command:
-        from_crickit_gui {'steps': '100', 'command': 'stepper_reverse',
+        to_hardware {'steps': '100', 'command': 'stepper_reverse',
                           'speed': 0.0294, 'style': 'Double'}
-        from_crickit_gui {'steps': '100', 'command': 'stepper_drive_forward',
+        to_hardware {'steps': '100', 'command': 'stepper_drive_forward',
                           'speed': 0.0, 'style': 'Single'}
 
         :param port: drive or motor port
@@ -360,7 +366,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         This is the neopixel handler
 
         Typical command:
-        from_crickit_gui {'number_of_pixels': 8, 'command': 'set_pixel', 'green': 128,
+        to_hardware {'number_of_pixels': 8, 'command': 'set_pixel', 'green': 128,
                           'red': 121, 'pixel_position': 4, 'blue': 137}
         :param number_of_pixels: pixels on ring or strip
         :param pixel_position: pixel number to control - zero is the first
@@ -397,7 +403,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         Set a signal, specified by its pin number in the payload,
         to the value specified in the payload.
 
-        Typical message: from_crickit_gui {'command': 'digital_write', 'value': 0, 'pin': 0}
+        Typical message: to_hardware {'command': 'digital_write', 'value': 0, 'pin': 0}
 
         :param topic: message topic
         :param payload: message payload
@@ -476,7 +482,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         Set the specified drive pin to the specified pwm level
 
         Typical message:
-        from_crickit_gui {'pin': 0, 'command': 'pwm_write', 'value': 0.41}
+        to_hardware {'pin': 0, 'command': 'pwm_write', 'value': 0.41}
 
         :param topic: message topic
         :param payload: message payload
@@ -492,7 +498,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         Set servo angle for the specified servo
 
         Typical message:
-        from_crickit_gui {'command': 'servo_position', 'position': 114, 'pin': 1}
+        to_hardware {'command': 'servo_position', 'position': 114, 'pin': 1}
 
         :param topic: message topic
         :param payload: message payload
@@ -508,7 +514,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         Set a signal to analog input
 
         Typical message:
-        from_crickit_gui {'command': 'set_mode_analog_input', 'pin': 5}
+        to_hardware {'command': 'set_mode_analog_input', 'pin': 5}
 
         :param topic: message topic
         :param payload: message payload
@@ -525,7 +531,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         """
         Set a signal to digital input
 
-        Typical message: from_crickit_gui {'command': 'set_mode_digital_input', 'pin': 5}
+        Typical message: to_hardware {'command': 'set_mode_digital_input', 'pin': 5}
 
         :param topic: message topic
         :param payload: message payload
@@ -554,7 +560,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         Set a signal to digital input pullup
 
         Typical message:
-        from_crickit_gui {'command': 'set_mode_digital_input_pullup', 'pin': 5}
+        to_hardware {'command': 'set_mode_digital_input_pullup', 'pin': 5}
         :param topic: message topic
         :param payload: message payload
         """
@@ -574,7 +580,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
     def set_mode_digital_output(self, topic, payload):
         """
         Set a signal for digital output
-        Typical message: from_crickit_gui {'command': 'set_mode_digital_output', 'pin': 0}
+        Typical message: to_hardware {'command': 'set_mode_digital_output', 'pin': 0}
         :param topic: message topic
         :param payload: message payload
         """
@@ -604,7 +610,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
         """
         Set the frequency for a drive pin.
 
-        Typical message: from_crickit_gui {'pin': 0, 'command': 'set_mode_pwm'}
+        Typical message: to_hardware {'pin': 0, 'command': 'set_mode_pwm'}
 
         :param topic: message topic
         :param payload: message payload
@@ -623,7 +629,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
     def set_mode_servo(self, topic, payload):
         """
         Not used for crickit, but gui sends the following message:
-        from_crickit_gui {'command': 'set_mode_servo', 'pin': 1}
+        to_hardware {'command': 'set_mode_servo', 'pin': 1}
 
         :param topic: message topic
         :param payload: message payload
@@ -666,7 +672,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
     def dc_motor_move(self, motor, speed):
         """
         Set the specified motor to the specified speed.
-        Typical message: from_crickit_gui {'command': 'digital_write', 'value': 0, 'pin': 0}
+        Typical message: to_hardware {'command': 'digital_write', 'value': 0, 'pin': 0}
 
         :param motor: 1 or 2
         :param speed: motor speed
@@ -676,10 +682,11 @@ class CrickitGateway(GatewayBase, threading.Thread):
 
     def run(self):
         """
-        The input polling thread
+        The input polling thread. Only report changes in input.
+
         :return:
         """
-        topic = "to_crickit_gui"
+
         while True:
             # check the signal inputs
             for pin in range(0, 8):
@@ -689,7 +696,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
                         'current_mode'] == self.DIGITAL_INPUT_MODE or \
                             self.pins_dictionary[pin]['current_mode'] \
                             == self.DIGITAL_INPUT_PULLUP_MODE:
-                        the_input = self.ss.digital_read(the_object)
+                        the_input = int(self.ss.digital_read(the_object))
 
                         if the_input != self.pins_dictionary[pin]['last_value']:
                             self.pins_dictionary[pin]['last_value'] = the_input
@@ -697,7 +704,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
                             payload = {'report': 'digital_input', 'pin': pin,
                                        'value':
                                            the_input, 'timestamp': timestamp}
-                            self.publish_payload(payload, topic)
+                            self.publish_payload(payload, self.report_topic)
 
                     elif self.pins_dictionary[pin]['current_mode'] \
                             == self.ANALOG_INPUT_MODE:
@@ -708,7 +715,7 @@ class CrickitGateway(GatewayBase, threading.Thread):
                             payload = {'report': 'analog_input', 'pin': pin,
                                        'value':
                                            the_input, 'timestamp': timestamp}
-                            self.publish_payload(payload, topic)
+                            self.publish_payload(payload, self.report_topic)
 
             # check the touch pins
             for pin in range(8, 12):
@@ -723,15 +730,25 @@ class CrickitGateway(GatewayBase, threading.Thread):
                         payload = {'report': 'digital_input', 'pin': pin,
                                    'value':
                                        touch_value, 'timestamp': timestamp}
-                        self.publish_payload(payload, topic)
+                        self.publish_payload(payload, self.report_topic)
 
             time.sleep(.1)
 
     def get_time_stamp(self):
+        """
+        Get the time of the pin change occurence
+        :return: Time stamp
+        """
         t = time.time()
         return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t))
 
     def mode_previously_set_warning(self, pin, mode):
+        """
+        Check if user already set the pin and print warning to console.
+        :param pin:
+        :param mode:
+        :return: Print warning to console
+        """
         print('Warning: Mode Not Set For Pin: ', pin)
         if mode == self.DIGITAL_INPUT_MODE:
             print('Current Mode is Digital Input')
@@ -749,13 +766,15 @@ def crickit_gateway():
                         help="This parameter identifies the target GPIO "
                              "device")
     parser.add_argument("-l", dest="subscriber_list",
-                        default="from_crickit_gui", nargs='+',
+                        default="to_hardware", nargs='+',
                         help="Banyan topics space delimited: topic1 topic2 "
                              "topic3")
     parser.add_argument("-n", dest="process_name", default="CrickitGateway",
                         help="Set process name in banner")
     parser.add_argument("-p", dest="publisher_port", default='43124',
                         help="Publisher IP port")
+    parser.add_argument("-r", dest="report_topic", default='report_from_hardware',
+                        help="Topic to publish reports from hardware.")
     parser.add_argument("-s", dest="subscriber_port", default='43125',
                         help="Subscriber IP port")
     parser.add_argument("-t", dest="loop_time", default=".1",
@@ -772,6 +791,7 @@ def crickit_gateway():
         'subscriber_port': args.subscriber_port,
         'process_name': args.process_name,
         'loop_time': float(args.loop_time),
+        'report_topic': args.report_topic,
         'board_type': args.board_type}
 
     try:

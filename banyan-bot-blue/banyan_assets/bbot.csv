@@ -1,0 +1,4 @@
+command_string,spawn,topic,append_bp_address,auto_restart,wait
+sudo python3 bluetooth_gateway.py,yes,local,no,no,5
+python3 crickit_gateway.py,yes,local,no,no,1
+python3 robot_control.py,yes,local,no,no,1

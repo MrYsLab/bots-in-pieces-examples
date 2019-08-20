@@ -73,7 +73,7 @@ class CrickitGui(BanyanBase):
             publisher_port=kwargs['publisher_port'],
             process_name=kwargs['process_name'])
 
-        self.set_subscriber_topic('to_crickit_gui')
+        self.set_subscriber_topic('report_from_hardware')
 
         self.main = Tk()
         self.main.title('Demo Station For Raspberry Pi Crickit')
@@ -329,7 +329,7 @@ class SignalInputs:
                 else:
                     payload = {'command': 'set_mode_analog_input', 'pin': pin}
 
-            topic = 'from_crickit_gui'
+            topic = 'to_hardware'
             self.caller.publish_payload(payload, topic)
 
     def set_input_value(self, channel, value):
@@ -426,7 +426,7 @@ class SignalOutputs:
                 pin = self.values_controls.index(event.widget)
                 # need to decrease by 1
                 value = self.selections.index(event.widget.get()) - 1
-                topic = 'from_crickit_gui'
+                topic = 'to_hardware'
                 payload = {'command': 'set_mode_digital_output',
                            'pin': pin}
                 self.caller.publish_payload(payload, topic)
@@ -549,7 +549,7 @@ class TouchInputs:
         Enable digital input for virtual pins 8 through 11
         :return:
         """
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
         for pin in range(8, 12):
             payload = {'command': 'set_mode_digital_input', 'pin': pin}
             self.caller.publish_payload(payload, topic)
@@ -615,7 +615,7 @@ class DriveOutputs:
         # normalize pin number for drives
         pin = index
         value = self.drive_scales[index].get()
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
 
         payload = {'command': 'set_mode_pwm', 'pin': pin}
         self.caller.publish_payload(payload, topic)
@@ -685,7 +685,7 @@ class DcMotors:
 
     def move_forward(self, index):
         speed = self.motor_scales[index].get()
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
 
         payload = {'command': 'dc_motor_forward', 'motor': index + 1,
                    'speed': speed}
@@ -693,7 +693,7 @@ class DcMotors:
 
     def move_reverse(self, index):
         speed = self.motor_scales[index].get()
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
 
         payload = {'command': 'dc_motor_reverse', 'motor': index + 1,
                    'speed': speed * -1.0}
@@ -753,7 +753,7 @@ class Servos:
         # normalize pin number for drives
 
         value = self.servo_scales[index].get()
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
         payload = {'command': 'set_mode_servo', 'pin': index}
         self.caller.publish_payload(payload, topic)
 
@@ -871,7 +871,7 @@ class Steppers:
         speed = self.stepper_scales[index].get()
         style = self.stepper_styles[index].get()
         steps = self.stepper_steps[index].get()
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
 
         if index == 0:
             payload = {'command': 'stepper_drive_forward',
@@ -892,7 +892,7 @@ class Steppers:
         speed = self.stepper_scales[index].get()
         style = self.stepper_styles[index].get()
         steps = self.stepper_steps[index].get()
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
 
         if index == 0:
             payload = {'command': 'stepper_drive_reverse',
@@ -1014,7 +1014,7 @@ class NeoPixels:
         g = self.g_var.get()
         b = self.b_var.get()
 
-        topic = 'from_crickit_gui'
+        topic = 'to_hardware'
         payload = {'command': 'set_pixel', 'number_of_pixels': num_pixels,
                    'pixel_position': pixel_position, 'red': r, 'green': g,
                    'blue': b}
