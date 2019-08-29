@@ -57,25 +57,27 @@ class ExpProGateway(GatewayBase, threading.Thread):
                 'process_name'],
             board_type=kwargs['board_type'],
         )
-        # get sensitivity levels for the analog inputs
-        sensitivity = kwargs['threshold']
+        # get threshold levels for the analog inputs
+        self.threshold = kwargs['threshold']
 
         # format is different if provided as default values vs.
         # user entered values. format appropriately.
-        if isinstance(sensitivity, list):
+        if isinstance(self.threshold, list):
             # convert string values to floats
-            sensitivity = [float(i) for i in sensitivity]
+            self.threshold = [float(i) for i in self.threshold]
         else:
-            sensitivity = [float(i) for i in sensitivity.split(',')]
+            self.threshold = [float(i) for i in self.threshold.split(',')]
 
-        if len(sensitivity) != 4:
+        if len(self.threshold) != 4:
             raise RuntimeError('You must specify 4 thresholds')
+
+        self.last_analog_value = [0.0, 0.0, 0.0, 0, 0]
 
         # the explorer analog input code sends data
         # too fast to process properly, so using
         # the lock solves this issue.
 
-        self.the_lock = threading.RLock()
+        # self.the_lock = threading.RLock()
 
         # get the report topic passed in
         self.report_topic = (kwargs['report_topic'])
@@ -93,6 +95,9 @@ class ExpProGateway(GatewayBase, threading.Thread):
                                     13: eh.output.three,
                                     16: eh.output.four
                                     }
+        # analog input objects
+        self.analog_input_objects = [eh.analog.one, eh.analog.two,
+                                     eh.analog.three, eh.analog.four]
 
         # enable all of the digital inputs and assign
         # a callback for when the pin goes high
@@ -111,13 +116,11 @@ class ExpProGateway(GatewayBase, threading.Thread):
         eh.touch.pressed(self.touch_pressed)
         eh.touch.released(self.touch_released)
 
-        # enable analog inputs if user selected to do so
-        # when instantiating ExpProGateway
-        if kwargs['enable_analog_input']:
-            eh.analog.one.changed(self.analog_in1, sensitivity[0])
-            eh.analog.two.changed(self.analog_in2, sensitivity[1])
-            eh.analog.three.changed(self.analog_in3, sensitivity[2])
-            eh.analog.four.changed(self.analog_in4, sensitivity[3])
+        threading.Thread.__init__(self)
+        self.daemon = True
+
+        # start the thread to perform analog input polling
+        self.start()
 
         # start the banyan receive loop
         try:
@@ -133,20 +136,18 @@ class ExpProGateway(GatewayBase, threading.Thread):
         pass
 
     def touch_pressed(self, pin, state):
-        with self.the_lock:
-            timestamp = self.get_time_stamp()
+        timestamp = self.get_time_stamp()
 
-            payload = {'report': 'touch', 'pin': pin,
-                       'value': 1, 'timestamp': timestamp}
-            self.publish_payload(payload, self.report_topic)
+        payload = {'report': 'touch', 'pin': pin,
+                   'value': 1, 'timestamp': timestamp}
+        self.publish_payload(payload, self.report_topic)
 
     def touch_released(self, pin, state):
-        with self.the_lock:
-            timestamp = self.get_time_stamp()
+        timestamp = self.get_time_stamp()
 
-            payload = {'report': 'touch', 'pin': pin,
-                       'value': 0, 'timestamp': timestamp}
-            self.publish_payload(payload, self.report_topic)
+        payload = {'report': 'touch', 'pin': pin,
+                   'value': 0, 'timestamp': timestamp}
+        self.publish_payload(payload, self.report_topic)
 
     def input_callback_high(self, data):
         """
@@ -155,16 +156,16 @@ class ExpProGateway(GatewayBase, threading.Thread):
         the change of pin state for the pin.
         :param data: callback data
         """
-        with self.the_lock:
-            timestamp = self.get_time_stamp()
-            # translate pin number
-            if data.pin in self.gpio_input_pins:
-                pin = self.gpio_input_pins[data.pin]
-                payload = {'report': 'digital_input', 'pin': pin,
-                           'value': 1, 'timestamp': timestamp}
-                self.publish_payload(payload, self.report_topic)
-            else:
-                raise RuntimeError('unknown input pin: ', data.pin)
+
+        timestamp = self.get_time_stamp()
+        # translate pin number
+        if data.pin in self.gpio_input_pins:
+            pin = self.gpio_input_pins[data.pin]
+            payload = {'report': 'digital_input', 'pin': pin,
+                       'value': 1, 'timestamp': timestamp}
+            self.publish_payload(payload, self.report_topic)
+        else:
+            raise RuntimeError('unknown input pin: ', data.pin)
 
     def input_callback_low(self, data):
         """
@@ -173,55 +174,35 @@ class ExpProGateway(GatewayBase, threading.Thread):
         the change of pin state for the pin.
         :param data: callback data
         """
-        with self.the_lock:
-            timestamp = self.get_time_stamp()
-            # translate pin number
-            if data.pin in self.gpio_input_pins:
-                pin = self.gpio_input_pins[data.pin]
-                payload = {'report': 'digital_input', 'pin': pin,
-                           'value': 0, 'timestamp': timestamp}
-                self.publish_payload(payload, self.report_topic)
-            else:
-                raise RuntimeError('unknown input pin: ', data.pin)
-
-    def analog_in1(self, data, value):
-        with self.the_lock:
-            # explorer sometimes sends bogus data - just ignore it
-            if value > 5.1:
-                return
-            else:
-                self.publish_analog_data(1, value)
-
-    def analog_in2(self, data, value):
-        with self.the_lock:
-            # explorer sometimes sends bogus data - just ignore it
-            if value > 5.1:
-                return
-            else:
-                self.publish_analog_data(2, value)
-
-    def analog_in3(self, data, value):
-        with self.the_lock:
-            # explorer sometimes sends bogus data - just ignore it
-            if value > 5.1:
-                return
-            else:
-                self.publish_analog_data(3, value)
-
-    def analog_in4(self, data, value):
-        with self.the_lock:
-            # explorer sometimes sends bogus data - just ignore it
-            if value > 5.1:
-                return
-            else:
-                self.publish_analog_data(4, value)
-
-    def publish_analog_data(self, pin, value):
-        # timestamp = self.get_time_stamp()
         timestamp = self.get_time_stamp()
-        payload = {'report': 'analog_input', 'pin': pin,
-                   'value': value, 'timestamp': timestamp}
-        self.publish_payload(payload, self.report_topic)
+        # translate pin number
+        if data.pin in self.gpio_input_pins:
+            pin = self.gpio_input_pins[data.pin]
+            payload = {'report': 'digital_input', 'pin': pin,
+                       'value': 0, 'timestamp': timestamp}
+            self.publish_payload(payload, self.report_topic)
+        else:
+            raise RuntimeError('unknown input pin: ', data.pin)
+
+    def run(self):
+        """
+        The input polling thread. Only report changes in input.
+
+        :return:
+        """
+        num_inputs = len(self.analog_input_objects)
+        while True:
+            for index, analog_input_object in enumerate(self.analog_input_objects):
+                value = analog_input_object.read()
+                if value < 6.5:
+                    if self.last_analog_value[index] != value:
+                        if abs(self.last_analog_value[index] - value) > self.threshold[index]:
+                            self.last_analog_value[index] = value
+                            timestamp = self.get_time_stamp()
+                            payload = {'report': 'analog_input', 'pin': index + 1,
+                                       'value':
+                                           value, 'timestamp': timestamp}
+                            self.publish_payload(payload, self.report_topic)
 
     def additional_banyan_messages(self, topic, payload):
         """
@@ -282,11 +263,12 @@ class ExpProGateway(GatewayBase, threading.Thread):
         # we will use the fade function
         pin = payload['pin']
         value = payload['value']
-        if pin in self.digital_output_pins:
-            output_object = self.digital_output_pins[pin]
-            output_object.fade(0, value, .0001)
-        else:
-            raise RuntimeError('illegal digital output pin: ', pin)
+        if 0 <= value <= 100.0:
+            if pin in self.digital_output_pins:
+                output_object = self.digital_output_pins[pin]
+                output_object.pwm(eh.PULSE_FREQUENCY, value)
+            else:
+                raise RuntimeError('illegal digital output pin: ', pin)
 
     def disable_analog_reporting(self, topic, payload):
         """
@@ -474,7 +456,7 @@ def exp_pro_gateway():
                         default="to_hardware", nargs='+',
                         help="Banyan topics space delimited: topic1 topic2 "
                              "topic3")
-    parser.add_argument("-n", dest="process_name", default="CrickitGateway",
+    parser.add_argument("-n", dest="process_name", default="ExpProGateway",
                         help="Set process name in banner")
     parser.add_argument("-p", dest="publisher_port", default='43124',
                         help="Publisher IP port")
@@ -482,7 +464,7 @@ def exp_pro_gateway():
                         help="Topic to publish reports from hardware.")
     parser.add_argument("-s", dest="subscriber_port", default='43125',
                         help="Subscriber IP port")
-    parser.add_argument("-t", dest="threshold", default="4.99, 4.99, 4.99, 4.99",
+    parser.add_argument("-t", dest="threshold", default="0.3, 0.3, 0.3, 0.3",
                         nargs="+", help="A space delimited list of analog input sensitivities. Must contain 4 values "
                                         "between 0.0 and 5.0")
 
