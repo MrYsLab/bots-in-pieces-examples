@@ -1,4 +1,4 @@
 command_string,spawn,topic,append_bp_address,auto_restart,wait
 monitor,yes,local,no,no,0
 python3 ../../test_fixtures/exp_pro_gui.py,yes,local,no,no,0
-"coverage run --branch  --append --omit=/usr/lib*,/usr/local* ../../banyan_assets/exp_pro_gateway.py",yes,local,no,no,5
+"coverage run --branch  --append --omit=/usr/lib*,/usr/local* ../../banyan_assets/exp_pro_gateway.py -a true",yes,local,no,no,5
